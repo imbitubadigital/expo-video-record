@@ -5,7 +5,7 @@ import { Camera } from 'expo-camera';
 import {FontAwesome} from '@expo/vector-icons';
 import * as Permissions from 'expo-permissions';
 import * as MediaLibrary from 'expo-media-library';
-import { Video } from 'expo-av';
+import { Video, Audio } from 'expo-av';
 
 export default function App() {
   const canRef = useRef<any>(null);
@@ -15,7 +15,15 @@ export default function App() {
   const [show, setShow] = useState(false);
   const [showVideo, setShowVideo] = useState(false);
   const [recording, setRecording] = useState(false);
+  const [recordingAudio, setRecordingAudio] = useState(false);
   const [myVideo, setMyVideo] = useState('');
+
+  const [recordingMyAudio, setRecordingMyAudio] = useState<Audio.Recording>();
+  const [isAllowRecord, setAllowRecord] = useState("No");
+  const [recordingStatus, setRecordingStatus] = useState<Audio.RecordingStatus>();
+  const [sound, setSound] = useState<any>('');
+
+
   useEffect(() => {
     (async () => {
       const{status} = await Camera.requestPermissionsAsync();
@@ -29,13 +37,16 @@ export default function App() {
     (async () => {
       const{status} = await Permissions.askAsync(Permissions.AUDIO_RECORDING);
       setHasPermission(status === 'granted');
+      setAllowRecord(status);
     })();
   }, [])
 
   const takePicture = useCallback(async () => {
     const data = await canRef.current.takePictureAsync();
+
     setPhoto(data.uri);
     setShow(true)
+    setSound('');
   }, []);
 
   const savePhoto = useCallback(async () => {
@@ -58,6 +69,7 @@ export default function App() {
 
   const recordVideo = useCallback(async () => {
     if(!recording){
+      setSound('');
       setRecording(true)
       let video = await canRef.current.recordAsync();
       setMyVideo(video.uri);
@@ -69,6 +81,74 @@ export default function App() {
       setShowVideo(true)
   }
   }, [recording]);
+
+
+
+
+    async function _startRecording() {
+      await Audio.setAudioModeAsync({
+        playsInSilentModeIOS: true,
+        allowsRecordingIOS: true,
+      }); // <= important for IOS
+
+      const newRrecording = new Audio.Recording();
+      setRecordingMyAudio(newRrecording);
+
+      await newRrecording.prepareToRecordAsync(
+        Audio.RECORDING_OPTIONS_PRESET_LOW_QUALITY
+      );
+
+      newRrecording.setOnRecordingStatusUpdate((status: Audio.RecordingStatus) =>
+        setRecordingStatus(status)
+      );
+
+      await newRrecording.startAsync();
+    }
+
+
+    async function _stopRecording() {
+      if (!recordingMyAudio) {
+        console.log("You are not recording.")
+        return;
+      }
+
+      try {
+        await recordingMyAudio.stopAndUnloadAsync();
+        console.log(`Recorded URI: ${recordingMyAudio.getURI()}`);
+        setSound(recordingMyAudio.getURI());
+      } catch (error) {
+
+        console.log('deu muito ruim')
+        // Do nothing -- we are already unloaded.
+      }
+    }
+
+  const recordAudio = useCallback(async () => {
+      if(!recordingAudio){
+        setRecordingAudio(true)
+        _startRecording()
+        console.log('cima');
+
+      } else {
+        _stopRecording();
+        setRecordingAudio(false)
+        console.log('cima');
+      }
+  }, [_startRecording, _stopRecording]);
+
+  const play = useCallback(async () => {
+    const soundObject = new Audio.Sound();
+
+     try {
+      const {
+        sound: soundObject,
+        status,
+      } = await Audio.Sound.createAsync({uri: sound}, { shouldPlay: true });
+      // Your sound is playing!
+    } catch (error) {
+      console.log('ERRRROOOO ao tocar', error);
+    }
+  }, [sound]);
 
 
 
@@ -99,6 +179,13 @@ export default function App() {
             </TouchableOpacity>
           </View>
         </Camera>
+          {sound !== '' && (
+            <View style={{ padding: 15, justifyContent: 'center', alignItems: 'center' }}>
+              <TouchableOpacity onPress={play}>
+                <Text>Ouvir gravação</Text>
+              </TouchableOpacity>
+            </View>
+        )}
         <View style={styles.footer}>
           <TouchableOpacity
             style={styles.button}
@@ -106,7 +193,16 @@ export default function App() {
           >
             <FontAwesome name="camera" size={26} color="green" />
           </TouchableOpacity>
-
+          <View>
+            <Text style={{ color: '#fff' }}>{recordingStatus?.durationMillis}</Text>
+            <TouchableOpacity style={styles.button} onPress={recordAudio}>
+              {recordingAudio ? (
+                <FontAwesome name="stop-circle" size={26} color="orange" />
+              ) : (
+                <FontAwesome name="play-circle" size={30} color="purple" />
+              )}
+            </TouchableOpacity>
+          </View>
           <TouchableOpacity style={styles.button} onPress={recordVideo}>
             {recording ? (
               <FontAwesome name="stop-circle" size={26} color="red" />
@@ -195,6 +291,7 @@ const styles = StyleSheet.create({
     padding: 15,
     borderRadius: 60,
   },
+
   footer:{
     flexDirection: 'row',
     justifyContent: 'space-between',
