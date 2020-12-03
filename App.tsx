@@ -1,6 +1,6 @@
 import { StatusBar } from 'expo-status-bar';
 import React, {useState, useEffect, useCallback, useRef} from 'react';
-import { StyleSheet, Alert, Text, View, SafeAreaView, TouchableOpacity, Modal, Image } from 'react-native';
+import { StyleSheet, Alert, Text, View, SafeAreaView, TouchableOpacity, Modal, Image, ScrollView } from 'react-native';
 import { Camera } from 'expo-camera';
 import {FontAwesome} from '@expo/vector-icons';
 import * as Permissions from 'expo-permissions';
@@ -9,6 +9,7 @@ import { Video, Audio } from 'expo-av';
 
 export default function App() {
   const canRef = useRef<any>(null);
+  const scrollRef = useRef<any>(null);
   const [type, setType] = useState(Camera.Constants.Type.front)
   const [hasPermission, setHasPermission] = useState(false)
   const [photo, setPhoto] = useState('');
@@ -23,6 +24,10 @@ export default function App() {
   const [recordingStatus, setRecordingStatus] = useState<Audio.RecordingStatus>();
   const [sound, setSound] = useState<any>('');
 
+  const [playScroll, setPlayStroll] = useState(false);
+  const [distance, setDistance] = useState(0);
+  const [teste, setTeste] = useState<any>(null);
+  const [velocity, setVelocity] = useState(1000);
 
   useEffect(() => {
     (async () => {
@@ -150,6 +155,61 @@ export default function App() {
     }
   }, [sound]);
 
+  const reset = useCallback(() => {
+    scrollRef.current.scrollTo({x: 0, y: 0, animated: true});
+    setDistance(0);
+    setPlayStroll(false);
+    clearInterval(teste);
+  }, [teste]);
+
+  const roller = useCallback((value) => {
+    scrollRef.current.scrollTo({x: 0, y: value, animated: true});
+  }, [scrollRef, distance,]);
+
+  const handleInterval = useCallback(() => {
+    console.log('distance', distance);
+    let newDistance = distance;
+    const interval = setInterval(() => {
+      console.log('entrou', newDistance);
+        roller(newDistance);
+       newDistance = newDistance + 5;
+       setDistance(newDistance);
+      }, velocity);
+      setTeste(interval);
+  }, [distance, roller, velocity]);
+
+
+  const top = useCallback(() => {
+    if(!playScroll){
+      handleInterval();
+      setPlayStroll(true);
+    } else {
+      console.log('baixo');
+      setPlayStroll(false);
+      clearInterval(teste);
+    }
+  }, [ playScroll, teste]);
+
+
+  const increment = useCallback(() => {
+    if(velocity > 100){
+      const newVelocity = velocity - 100;
+      setVelocity(newVelocity);
+      clearInterval(teste);
+      handleInterval();
+    }
+  }, [velocity, handleInterval, teste]);
+
+  const decrement = useCallback(() => {
+    if(velocity < 5000){
+      const newVelocity = velocity + 100;
+      setVelocity(newVelocity);
+      clearInterval(teste);
+      handleInterval();
+    }
+  }, [velocity, handleInterval, teste]);
+
+
 
 
   if(!hasPermission){
@@ -161,8 +221,93 @@ export default function App() {
   }
 
   return (
+    <>
+     <StatusBar style="auto" />
       <SafeAreaView style={styles.container}>
-        <StatusBar style="auto" />
+        <ScrollView
+          style={{ padding: 20 }}
+          ref={scrollRef}
+        >
+
+            <Text>Texto 01</Text>
+            <Text>Texto 02</Text>
+            <Text>Texto 03</Text>
+            <Text>Texto 04</Text>
+            <Text>Texto 05</Text>
+            <Text>Texto 03</Text>
+            <Text>Texto 06</Text>
+            <Text>Texto 07</Text>
+            <Text>Texto 08</Text>
+            <Text>Texto 09</Text>
+            <Text>Texto 10</Text>
+            <Text>Texto 11</Text>
+            <Text>Texto 12</Text>
+            <Text>Texto 13</Text>
+            <Text>Texto 14</Text>
+            <Text>Texto 15</Text>
+            <Text>Texto 16</Text>
+            <Text>Texto 17</Text>
+            <Text>Texto 18</Text>
+            <Text>Texto 19</Text>
+            <Text>Texto 20</Text>
+            <Text>Texto 21</Text>
+            <Text>Texto 22</Text>
+            <Text>Texto 23</Text>
+            <Text>Texto 24</Text>
+            <Text>Texto 25</Text>
+
+        </ScrollView>
+        <View
+          style={{
+            paddingHorizontal: 20,
+            paddingVertical: 5,
+            backgroundColor: '#ccc',
+            flexDirection: 'row',
+            justifyContent: 'space-between'
+          }}
+          >
+            <TouchableOpacity onPress={top}>
+              <Text>Rolar</Text>
+            </TouchableOpacity>
+            <View style={{
+              flexDirection: 'row',
+              justifyContent: 'space-between',
+              width: 100,
+              padding: 5,
+            }}>
+
+              <TouchableOpacity onPress={decrement}
+                style={{
+                  backgroundColor: '#121212',
+                  width: 34,
+                  height: 34,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                  <Text style={{ color: '#fff' }}>-</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={increment}
+               style={{
+                backgroundColor: '#121212',
+                width: 34,
+                height: 34,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+              >
+                  <Text style={{ color: '#fff' }}>+</Text>
+              </TouchableOpacity>
+
+            </View>
+
+            <TouchableOpacity onPress={reset}>
+              <Text>Reset</Text>
+            </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+      <SafeAreaView style={styles.container}>
+
         <Camera
           style={{ flex:1 }}
           type={type}
@@ -276,6 +421,7 @@ export default function App() {
           </Modal>
         )}
       </SafeAreaView>
+      </>
     );
 }
 
